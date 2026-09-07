@@ -223,6 +223,20 @@ impl FpgaParameterExporter {
     ///
     /// An exporter with no weights is rectangular by definition.
     ///
+    /// # What this does not check
+    ///
+    /// Rectangularity only. `thresholds.len()`, `weights.len()` and
+    /// `decay_rates.len()` are **not** required to agree, so sixteen thresholds
+    /// beside four weight rows still validates: it exports `num_neurons: 16`
+    /// with four rows of weights, and `NeuronParamRam` is loaded short.
+    ///
+    /// That is deliberate for now. A partial export — thresholds set, weights
+    /// still to come — is a plausible intermediate state, and turning it into an
+    /// error is a behaviour change that deserves its own decision rather than
+    /// riding along with a corruption fix. [`ParameterShapeError`] is
+    /// `#[non_exhaustive]` so a count-mismatch variant can be added without
+    /// breaking callers.
+    ///
     /// ```rust
     /// use silicon_bridge::{FpgaParameterExporter, ParameterShapeError};
     ///
@@ -717,6 +731,25 @@ mod weight_shape_tests {
             vec![vec![0.5, 0.5], vec![0.5], vec![0.5, 0.5]],
             vec![0.9, 0.9, 0.9],
         )
+    }
+
+    /// `validate` covers rectangularity, not agreement between the three
+    /// vectors. Pinned so the boundary is a decision on record rather than an
+    /// oversight — a count-mismatch variant can be added later without
+    /// breaking callers, since the error enum is `#[non_exhaustive]`.
+    #[test]
+    fn rectangular_rows_validate_even_when_the_vector_lengths_disagree() {
+        let mismatched = FpgaParameterExporter::from_params(
+            vec![1.0; 16],
+            vec![vec![0.5, 0.5]; 4],
+            vec![0.9; 2],
+        );
+
+        assert_eq!(mismatched.validate(), Ok(()));
+
+        let params = ParameterExport::export(&mismatched);
+        assert_eq!(params.metadata.num_neurons, 16, "from the threshold count");
+        assert_eq!(params.weights.len(), 8, "only 4 rows of 2 were supplied");
     }
 
     #[test]
