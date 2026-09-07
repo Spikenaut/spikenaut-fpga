@@ -18,12 +18,20 @@ jobs:
   sync-project:
     runs-on: ubuntu-latest
     steps:
-      - name: Sync issue(s) with org Hardware project
+      - name: Sync issue(s) with the rmems consolidation project
         env:
-          GH_TOKEN: ${{ secrets.PROJECTS_TOKEN || secrets.LIMEN_NEURAL_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
-          PROJECT_ID: PVT_kwDOEEyGS84BfB8y
-          STATUS_FIELD_ID: PVTSSF_lADOEEyGS84BfB8yzhZX2Lc
-          OPT_READY: "856cdede"
+          # PROJECTS_TOKEN is a classic PAT carrying the `project` scope. The
+          # default GITHUB_TOKEN cannot touch ProjectsV2, so without
+          # PROJECTS_TOKEN this job no-ops (see the preflight below) rather than
+          # failing the run.
+          GH_TOKEN: ${{ secrets.PROJECTS_TOKEN || secrets.GITHUB_TOKEN }}
+          HAS_PROJECTS_TOKEN: ${{ secrets.PROJECTS_TOKEN != '' }}
+          # rmems user project #5 "Limen-Neural Consolidation".
+          # The previous IDs pointed at Limen-Neural org project #8 "Hardware",
+          # which this repository left during the org transfer (#27).
+          PROJECT_ID: PVT_kwHODs2Zb84BfcTG
+          STATUS_FIELD_ID: PVTSSF_lAHODs2Zb84BfcTGzhZvKog
+          OPT_READY: "61e4505c"
           OPT_DONE: "98236657"
           EVENT_NAME: ${{ github.event_name }}
           ISSUE_NUM_EVENT: ${{ github.event.issue.number }}
@@ -33,6 +41,21 @@ jobs:
           REPO: ${{ github.event.repository.name }}
         run: |
           set -euo pipefail
+
+          # Preflight. ProjectsV2 mutations need a PAT with the `project` scope;
+          # the default GITHUB_TOKEN answers "Resource not accessible by
+          # integration". A missing token is a repository-setup gap, not a code
+          # defect, so an `issues` event skips quietly instead of marking every
+          # issue open and close as a failed run. An explicit workflow_dispatch
+          # still fails loudly.
+          if [ "$HAS_PROJECTS_TOKEN" != "true" ]; then
+            echo "::warning title=Project board sync skipped::secrets.PROJECTS_TOKEN is not set; ProjectsV2 needs a PAT with the 'project' scope."
+            if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+              echo "workflow_dispatch was explicit - failing instead of skipping." >&2
+              exit 1
+            fi
+            exit 0
+          fi
 
           sync_one() {
             local NUM="$1"
