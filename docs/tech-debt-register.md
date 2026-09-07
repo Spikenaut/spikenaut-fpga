@@ -26,23 +26,24 @@ the file and symbol names are the durable part.
 | 3 | Ragged weight rows silently produce a misaligned `.mem` | `src/fpga_export.rs` | High | PR #41 |
 | 4 | `FpgaMetrics::synthesis_ok` is hard-coded `true` | `src/fpga_metrics.rs:65,76` | High | blocked by #33 |
 | 5 | No required status checks — a red PR can merge | branch protection on `main` | High | settings change |
-| 6 | Published crate shipped agent instructions; no MSRV | `Cargo.toml` | Medium | PR #40 |
-| 7 | Doc and `unsafe` conventions unenforced | `src/lib.rs`, `src/fpga_export.rs:104` | Medium | PR #42 |
-| 8 | A library writes 20 lines to stdout on every export | `src/fpga_export.rs:195`, `src/fpga_bridge.rs:46` | Medium | queued |
-| 9 | No dependency automation | repo-wide | Medium | PR #43 |
-| 10 | `load_from_project` hard-codes an Eagle-Lander path | `src/fpga_metrics.rs:58` | Medium | blocked by #33 |
-| 11 | No `cargo doc` gate, though docs.rs breakage is a stated concern | `.github/workflows/ci.yml` | Medium | blocked by #31 |
-| 12 | README documents the Linux-only probe list as current | `README.md:29-33` | Medium | blocked by #33 |
-| 13 | No MSRV job, so `rust-version` can rot | `.github/workflows/ci.yml` | Low-med | blocked by #31 + #40 |
-| 14 | README examples are never compiled | `README.md`, `src/lib.rs` | Low-med | queued |
-| 15 | Report paths are `&str`, not `AsRef<Path>` | `src/fpga_metrics.rs:70` | Low-med | blocked by #33 |
-| 16 | Neuron counts across the three vectors are unchecked | `src/fpga_export.rs` | Low-med | queued |
-| 17 | `ping()` latches the bridge inactive forever | `src/fpga_bridge.rs:108-117` | Low-med | queued |
-| 18 | `LICENSE-MIT` still names the pre-transfer org | `LICENSE-MIT:3` | Low | **owner decision** |
-| 19 | 2.4 MB logo; the `imgbot` branch that shrinks it is unmergeable | `docs/logo.png` | Low | queued |
-| 20 | 12 stale remote branches | remote refs | Low | cleanup |
-| 21 | No `CONTRIBUTING`, `SECURITY`, templates, or `CODEOWNERS` | `.github/` | Low | queued |
-| 22 | No vulnerability audit in CI | `.github/workflows/ci.yml` | Low | blocked by #31 |
+| 6 | CI never runs on a stacked PR | `.github/workflows/ci.yml:6-7` | High | PR #46 |
+| 7 | Published crate shipped agent instructions; no MSRV | `Cargo.toml` | Medium | PR #40 |
+| 8 | Doc and `unsafe` conventions unenforced | `src/lib.rs`, `src/fpga_export.rs:104` | Medium | PR #42 |
+| 9 | A library writes 20 lines to stdout on every export | `src/fpga_export.rs:195`, `src/fpga_bridge.rs:46` | Medium | queued |
+| 10 | No dependency automation | repo-wide | Medium | PR #43 |
+| 11 | `load_from_project` hard-codes an Eagle-Lander path | `src/fpga_metrics.rs:58` | Medium | blocked by #33 |
+| 12 | No `cargo doc` gate, though docs.rs breakage is a stated concern | `.github/workflows/ci.yml` | Medium | blocked by #31 |
+| 13 | README documents the Linux-only probe list as current | `README.md:29-33` | Medium | blocked by #33 |
+| 14 | No MSRV job, so `rust-version` can rot | `.github/workflows/ci.yml` | Low-med | blocked by #31 + #40 |
+| 15 | README examples are never compiled | `README.md`, `src/lib.rs` | Low-med | queued |
+| 16 | Report paths are `&str`, not `AsRef<Path>` | `src/fpga_metrics.rs:70` | Low-med | blocked by #33 |
+| 17 | Neuron counts across the three vectors are unchecked | `src/fpga_export.rs` | Low-med | queued |
+| 18 | `ping()` latches the bridge inactive forever | `src/fpga_bridge.rs:108-117` | Low-med | queued |
+| 19 | `LICENSE-MIT` still names the pre-transfer org | `LICENSE-MIT:3` | Low | **owner decision** |
+| 20 | 2.4 MB logo; the `imgbot` branch that shrinks it is unmergeable | `docs/logo.png` | Low | queued |
+| 21 | 12 stale remote branches | remote refs | Low | cleanup |
+| 22 | No `CONTRIBUTING`, `SECURITY`, templates, or `CODEOWNERS` | `.github/` | Low | queued |
+| 23 | No vulnerability audit in CI | `.github/workflows/ci.yml` | Low | blocked by #31 |
 
 ---
 
@@ -116,7 +117,25 @@ enforcement.
 on required conversation resolution. Worth doing right after #31 merges, so the
 required names match the jobs that actually exist.
 
-### 6. Published crate shipped agent instructions; no MSRV
+### 6. CI never runs on a stacked PR
+
+`.github/workflows/ci.yml:6-7` filters `pull_request` to `branches: [main]`, so
+the workflow is skipped entirely for any PR based on another branch. Because a
+base retarget fires `pull_request: edited` — not one of the default trigger
+types — the checks do not appear when the parent merges either. A stacked change
+can reach `main` having never been built.
+
+Observed directly while filing this register: #42 (based on
+`fix/uart-cross-platform-ports`) and #45 (based on `ci/multi-os-uart`) show only
+the third-party review apps in their check lists. No `fmt`, no `test`, no
+`uart` — those jobs never ran. The review apps respond because they subscribe to
+`pull_request` webhooks themselves; the repository's own workflow does not. A
+stacked PR that looks green is green on nothing.
+
+**Fix (PR #46)** — drop the `branches` filter from `pull_request`, keeping it on
+`push` so post-merge builds stay limited to `main`.
+
+### 7. Published crate shipped agent instructions; no MSRV
 
 `exclude = ["docs/"]` is a deny-list, so `AGENTS.md`, `CLAUDE.md`, `REVIEW.md`,
 `.codacy.yml`, `.gitignore` and `.github/` all shipped to crates.io — 19 files,
@@ -126,7 +145,7 @@ edition-2024 parse error instead of a clean MSRV message.
 **Fix (PR #40)** — `include` allow-list (12 files, 81.5 KiB) plus
 `rust-version = "1.85"`, verified against the 1.85.0 toolchain.
 
-### 7. Doc and `unsafe` conventions unenforced
+### 8. Doc and `unsafe` conventions unenforced
 
 AGENTS.md marks "public items get `///` doc comments" and "no `unsafe` without
 justification" as mandatory, but nothing checked either. `FpgaMetadata` and all
@@ -138,7 +157,7 @@ bare field list.
 missing docs. Stacked on #39, which supplies the `FpgaBridge` doc the lint needs
 under `--features uart`.
 
-### 8. A library writes 20 lines to stdout on every export
+### 9. A library writes 20 lines to stdout on every export
 
 `print_export_summary` (`src/fpga_export.rs:195`) issues twenty `println!`s and
 is called unconditionally from `MemFileWriter::write_mem_files`
@@ -153,7 +172,7 @@ and CHANGELOG-able. One PR, `src/fpga_export.rs`; fold the bridge `println!` in
 or take it with #39's follow-up. Sequence after #41 — same file, overlapping
 region.
 
-### 9. No dependency automation
+### 10. No dependency automation
 
 `Cargo.lock` is gitignored, so the `Cargo.toml` requirement is the only place a
 floor can be raised, and `ci.yml` pins `dtolnay/rust-toolchain` by SHA — the pin
@@ -161,7 +180,7 @@ most likely to rot precisely because nothing nudges it.
 
 **Fix (PR #43)** — weekly grouped Dependabot for `cargo` and `github-actions`.
 
-### 10. `load_from_project` hard-codes an Eagle-Lander path
+### 11. `load_from_project` hard-codes an Eagle-Lander path
 
 `src/fpga_metrics.rs:58` reads
 `fpga-project/ship_ssn_logic.runs/impl_1/Basys3_Top_timing_summary_routed.rpt`.
@@ -172,7 +191,7 @@ general-purpose crate: it can only ever succeed inside Eagle-Lander's tree.
 root and top-module name as parameters, keeping the current string as a
 documented default. One PR, `src/fpga_metrics.rs`.
 
-### 11. No `cargo doc` gate
+### 12. No `cargo doc` gate
 
 AGENTS.md bans relative links to licence files in doc comments *because they
 break on docs.rs* — a rule that exists precisely because doc rendering is not
@@ -183,7 +202,7 @@ malformed doc table reaches docs.rs unnoticed.
 `RUSTDOCFLAGS: -D warnings` + `cargo doc --no-deps --features uart` as a step on
 #31's `uart` job, which already installs `libudev-dev`. A five-line diff.
 
-### 12. README documents the Linux-only probe list as current
+### 13. README documents the Linux-only probe list as current
 
 `README.md:29-33` and the UART section state that `FpgaBridge::new()` probes only
 `/dev/ttyUSB0..2` "not ttyACM, Windows COM ports, or arbitrary USB paths". True
@@ -193,7 +212,7 @@ today, false the moment #39 lands.
 the two passages around cross-platform discovery and `FpgaBridge::open`. Docs
 only.
 
-### 13. No MSRV job
+### 14. No MSRV job
 
 `rust-version = "1.85"` (PR #40) is only as good as what checks it. Nothing
 builds on the declared minimum, so the floor silently rises the first time
@@ -202,7 +221,7 @@ someone uses a newer API.
 **Fix scope (blocked by #31 and #40)** — one `msrv` job pinning the toolchain to
 the `rust-version` value, running `cargo check --all-targets`.
 
-### 14. README examples are never compiled
+### 15. README examples are never compiled
 
 The crate has no `#![doc = include_str!("../README.md")]`, so none of the
 README's four `rust` blocks are doctested. They can drift from the API without
@@ -213,7 +232,7 @@ changes.
 example `no_run` or `ignore` as needed. One PR touching `src/lib.rs` and the
 README's fences. Sequence after #31 and #33 clear the README.
 
-### 15. Report paths are `&str`, not `AsRef<Path>`
+### 16. Report paths are `&str`, not `AsRef<Path>`
 
 `FpgaMetrics::load_from_path(report_path: &str)` (`src/fpga_metrics.rs:70`)
 rejects non-UTF-8 paths and forces callers holding a `Path` or `PathBuf` to
@@ -223,7 +242,7 @@ disagree with each other.
 **Fix scope (blocked by #33)** — widen to `impl AsRef<Path>`. Source-compatible
 for every `&str` caller.
 
-### 16. Neuron counts across the three vectors are unchecked
+### 17. Neuron counts across the three vectors are unchecked
 
 Separate from #3: nothing requires `thresholds.len()`, `weights.len()` and
 `decay_rates.len()` to agree. Sixteen thresholds with four weight rows exports
@@ -236,7 +255,7 @@ error is a behaviour break that deserves its own discussion.
 the partial-export question is settled. `#[non_exhaustive]` on the enum was
 chosen with this in mind.
 
-### 17. `ping()` latches the bridge inactive forever
+### 18. `ping()` latches the bridge inactive forever
 
 `src/fpga_bridge.rs:108-117` sets `self.active = false` on *any* error, including
 a single 100 ms read timeout, and nothing ever sets it back. One slow reply
@@ -246,7 +265,7 @@ bridge not active" without touching the port.
 **Fix scope** — either drop the latch, or add a `reconnect()`. Small,
 `src/fpga_bridge.rs` only. Sequence after #39.
 
-### 18. `LICENSE-MIT` still names the pre-transfer org
+### 19. `LICENSE-MIT` still names the pre-transfer org
 
 `LICENSE-MIT:3` reads `Copyright (c) 2025 Limen-Neural`. Issue #27's acceptance
 criteria explicitly cover licences, and this is the last file that still names
@@ -258,7 +277,7 @@ patch. The other `Limen-Neural` mentions in the tree were checked and are
 **correct**: `neuromod` and `nir-rs` really do still live under that org, and
 `docs/boundary-matrix.md` refers to the stack by name, not by URL.
 
-### 19. 2.4 MB logo and an unmergeable `imgbot` branch
+### 20. 2.4 MB logo and an unmergeable `imgbot` branch
 
 `docs/logo.png` is 2,407,973 bytes — roughly 30× the entire published crate. It
 is excluded from the package, but every clone pays for it. `origin/imgbot`
@@ -270,7 +289,7 @@ merged.
 or resize: nothing displays it above 220 px, which is what the README requests)
 and close the `imgbot` branch.
 
-### 20. 12 stale remote branches
+### 21. 12 stale remote branches
 
 Two are fully merged into `main` and safe to delete: `upgrade/silicon-bridge-renames`,
 `viktor/add-ci-workflow`. Nine more are squash-merge artifacts — the work landed
@@ -279,14 +298,14 @@ on `main` as a squashed commit, so git still reports them unmerged:
 `cursor/fix-q88-signed-unsigned-6d9b`, `cursor/test-mem-file-writer-6d9b`,
 `docs/readme-accuracy`, `fix/q88-signed-unsigned-docs`,
 `fix/remediation-7df322ef-9bc91a`, `test/fpga-metrics-wns`, `test/mem-file-writer`.
-Plus `imgbot` (#19).
+Plus `imgbot` (#20).
 
 **Fix scope** — verify each against its closed PR, then delete. Listed rather
 than deleted here because branch deletion is not reversible from a script.
 Enabling "automatically delete head branches" on the repository stops the
 backlog re-forming.
 
-### 21. No `CONTRIBUTING`, `SECURITY`, templates, or `CODEOWNERS`
+### 22. No `CONTRIBUTING`, `SECURITY`, templates, or `CODEOWNERS`
 
 The repo is public and dual-licensed but offers no contribution guide, no
 vulnerability-reporting route, and no PR/issue templates. AGENTS.md holds
@@ -296,7 +315,7 @@ conventions that only agents read.
 conventions), `SECURITY.md`, and `.github/PULL_REQUEST_TEMPLATE.md` carrying the
 `cargo fmt/clippy/test` checklist from CLAUDE.md's quality bar.
 
-### 22. No vulnerability audit in CI
+### 23. No vulnerability audit in CI
 
 Nothing runs `cargo audit` or `cargo deny`. `serialport` pulls in `libudev-sys`
 and `nix`, so the `uart` feature has real native surface area.
