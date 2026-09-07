@@ -20,3 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Documented the two coexisting Q8.8 conventions (unsigned `u16` export vs
   signed `i16` UART stimuli) with a side-by-side table in the crate, module, and
   README docs, plus tests covering both clamp boundaries (#23).
+- Declared `rust-version = "1.85"`. This is package metadata for the resolver,
+  docs.rs, and MSRV tooling; it does not change what a pre-1.85 toolchain
+  reports, because Cargo rejects `edition = "2024"` while parsing the manifest
+  before `rust-version` is consulted.
