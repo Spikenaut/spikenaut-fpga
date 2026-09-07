@@ -1,0 +1,21 @@
+Cargo.toml
+  s_c7a686db5ac1e5::t_f467bbabeadb8f 5-8
+CHANGELOG.md
+  s_c7a686db5ac1e5::t_036ba99553d0f4 23-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a4c6a29e2c02c57e3cf8cecfa5fdfdb79334728a",
+  "prompts": {},
+  "sessions": {
+    "s_c7a686db5ac1e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e3ecf17c-0c1f-4f56-bc93-e08ac6c2f86e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Raul Montoya Cardenas <montoyaraul34@gmail.com>"
+    }
+  }
+}
