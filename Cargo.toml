@@ -2,6 +2,10 @@
 name = "silicon-bridge"
 version = "0.1.0"
 edition = "2024"
+# Edition 2024 is stable from 1.85.0, and `getrandom` 0.4 — reached through the
+# `tempfile` dev-dependency — is the highest-MSRV crate in the graph, also at
+# 1.85. Both checked against the 1.85.0 toolchain.
+rust-version = "1.85"
 license = "MIT OR Apache-2.0"
 description = "SNN-to-FPGA deployment pipeline: Q8.8 fixed-point parameter export, .mem file generation, UART spike readback, and Vivado timing report parsing for neuromorphic hardware"
 repository = "https://github.com/rmems/silicon-bridge"
