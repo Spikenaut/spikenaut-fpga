@@ -1,0 +1,38 @@
+version: 2
+
+updates:
+  # Cargo.lock is not committed, so a Cargo.toml requirement is the only place a
+  # dependency floor can be raised. Grouped so a quiet week produces one PR, not
+  # five, and capped so a stale queue cannot bury the hand-written PRs.
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    commit-message:
+      # Conventional Commits, per AGENTS.md.
+      prefix: chore
+      include: scope
+    groups:
+      cargo-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  # CI pins `dtolnay/rust-toolchain` by SHA, which never updates on its own and
+  # is exactly the kind of pin that silently rots.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        update-types:
+          - major
+          - minor
+          - patch
